@@ -1,0 +1,12 @@
+.idea/
+*.geany
+*~
+
+main
+sbercdn-exporter
+
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
