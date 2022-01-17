@@ -13,10 +13,10 @@ type Auth struct {
 }
 
 type ClientConf struct {
-	ApiUrl string            `yaml:"api_url"`
-	URNs   map[string]string `yaml:"URNs"`
-	Auth         Auth          `yaml:"auth"`
-	MaxQueryTime time.Duration `yaml:"max_query_time"`
+	ApiUrl       string            `yaml:"api_url"`
+	URNs         map[string]string `yaml:"URNs"`
+	Auth         Auth              `yaml:"auth"`
+	MaxQueryTime time.Duration     `yaml:"max_query_time"`
 }
 
 type ListenConf struct {

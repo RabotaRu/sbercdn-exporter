@@ -29,7 +29,7 @@ func (ac *SberCdnApiClient) GetCertList() (certlist []CertItem, err error) {
 
 	body, err := ac.Get("CertList")
 	if err != nil {
-		log.Panicln("failed to get certificates list: %v", err)
+		log.Panicln("failed to get certificates list:", err)
 	}
 	var result CertList
 	err = json.Unmarshal(body, &result)
