@@ -1,4 +1,4 @@
-package main
+package api_client
 
 import (
 	"context"
@@ -10,34 +10,22 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	// nolint: stylecheck
+	. "git.rabota.space/infrastructure/sbercdn-exporter/common"
 )
 
-type CertItem struct {
-	Alt     string  `json:"alt"`
-	Cn      string  `json:"cn"`
-	Issuer  string  `json:"issuer"`
-	Comment string  `json:"comment"`
-	Start   float64 `json:"start"`
-	End     float64 `json:"end"`
-}
-
-type CertList struct {
-	Message string     `json:"message"`
-	Data    []CertItem `json:"data"`
-	Status  int        `json:"status"`
-}
-
 type SberCdnApiClient struct {
+	*ClientConf
 	hc              *http.Client
-	conf            *ClientConf
 	auth_token_time time.Time
 	auth_token      string
 }
 
-func NewSberCdnApiClient(conf *ClientConf) *SberCdnApiClient {
+func NewSberCdnApiClient(options *ClientConf) *SberCdnApiClient {
 	return &SberCdnApiClient{
-		hc:   &http.Client{},
-		conf: conf,
+		hc:         &http.Client{},
+		ClientConf: options,
 	}
 }
 
@@ -47,17 +35,17 @@ func (ac *SberCdnApiClient) auth() (auth_token string, err error) {
 			log.Println("failed to update auth token:", r)
 		}
 	}()
-	if ac.auth_token != "" && time.Since(ac.auth_token_time) < (ac.conf.Auth.TokenLifetime-ac.conf.MaxQueryTime) {
+	if ac.auth_token != "" && time.Since(ac.auth_token_time) < (ac.Auth.TokenLifetime-ac.MaxQueryTime) {
 		return ac.auth_token, err
 	}
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		"POST",
-		ac.conf.ApiUrl+ac.conf.Auth.Urn,
+		ac.ApiUrl+ac.Auth.Urn,
 		strings.NewReader(
 			url.Values{
-				"username": {ac.conf.Auth.Username},
-				"password": {ac.conf.Auth.Password},
+				"username": {ac.Auth.Username},
+				"password": {ac.Auth.Password},
 			}.Encode(),
 		),
 	)
@@ -93,7 +81,7 @@ func (ac *SberCdnApiClient) auth() (auth_token string, err error) {
 	return ac.auth_token, err
 }
 
-func (ac *SberCdnApiClient) GetCertList() (certlist []CertItem, err error) {
+func (ac *SberCdnApiClient) Get(urn string) (body []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("failed to get certificates list:", r)
@@ -103,7 +91,7 @@ func (ac *SberCdnApiClient) GetCertList() (certlist []CertItem, err error) {
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		"GET",
-		ac.conf.ApiUrl+strings.ReplaceAll(ac.conf.URNs.CertList, "{{ auth.id }}", ac.conf.Auth.Id),
+		ac.ApiUrl+strings.ReplaceAll(ac.URNs[urn], "{{ auth.id }}", ac.Auth.Id),
 		http.NoBody)
 	if err != nil {
 		log.Panicf("failed to prepare request for cert list: %v\n", err)
@@ -118,15 +106,9 @@ func (ac *SberCdnApiClient) GetCertList() (certlist []CertItem, err error) {
 		log.Panicf("failed to send request for cert list %v\n", err)
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	if err != nil {
 		log.Panicf("faile to read response body for cert list %v\n", err)
 	}
-
-	var result CertList
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		log.Panicf("failed to unmarshal cert list")
-	}
-	return result.Data, err
+	return body, err
 }

@@ -14,6 +14,10 @@ import (
 	"syscall"
 	"time"
 
+	"git.rabota.space/infrastructure/sbercdn-exporter/api_client"
+
+	// nolint: stylecheck
+	. "git.rabota.space/infrastructure/sbercdn-exporter/common"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/yaml.v2"
@@ -28,42 +32,12 @@ var (
 				Urn:           "/app/oauth/v1/token/",
 				TokenLifetime: time.Hour * 6,
 			},
-			URNs:         URNs{CertList: "/app/ssl/v1/account/{{ auth.id }}/certificate/"},
+			URNs:         map[string]string{"CertList": "/app/ssl/v1/account/{{ auth.id }}/certificate/"},
 			MaxQueryTime: time.Second * 10,
 		},
 		Listen: ListenConf{Address: ":9921"},
 	}
 )
-
-type Auth struct {
-	Id            string        `yaml:"id"`
-	Username      string        `yaml:"username"`
-	Password      string        `yaml:"password"`
-	Urn           string        `yaml:"urn"`
-	TokenLifetime time.Duration `yaml:"token_lifetime"`
-}
-
-type URNs struct {
-	CertList string `yaml:"cert_list"`
-}
-
-type ClientConf struct {
-	ApiUrl       string        `yaml:"api_url"`
-	URNs         URNs          `yaml:"URNs"`
-	Auth         Auth          `yaml:"auth"`
-	MaxQueryTime time.Duration `yaml:"max_query_time"`
-}
-
-type ListenConf struct {
-	Address     string `yaml:"address"`
-	CertFile    string `yaml:"cert_file"`
-	PrivkeyFile string `yaml:"privkey_file"`
-}
-
-type AppConf struct {
-	Listen ListenConf `yaml:"listen"`
-	Client ClientConf `yaml:"API"`
-}
 
 func readConfigFromEnv(prefix, tag string, c interface{}) {
 	cv := reflect.ValueOf(c)
@@ -142,11 +116,9 @@ func main() {
 		config.Listen.Address = "0.0.0.0" + config.Listen.Address
 	}
 
-	client := NewSberCdnApiClient(&config.Client)
-	collector := NewSberCdnCollector(client)
+	apiClient := api_client.NewSberCdnApiClient(&config.Client)
+	collector := NewSberCdnCollector(apiClient)
 	prometheus.MustRegister(collector)
-	// prometheus.MustRegister(certStart)
-	// prometheus.MustRegister(certEnd)
 
 	http.Handle("/metrics", promhttp.Handler())
 

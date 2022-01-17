@@ -3,15 +3,16 @@ package main
 import (
 	"log"
 
+	"git.rabota.space/infrastructure/sbercdn-exporter/api_client"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 type SberCdnCollector struct {
-	client       *SberCdnApiClient
+	client       *api_client.SberCdnApiClient
 	descriptions map[string]*prometheus.Desc
 }
 
-func NewSberCdnCollector(client *SberCdnApiClient) *SberCdnCollector {
+func NewSberCdnCollector(client *api_client.SberCdnApiClient) *SberCdnCollector {
 	return &SberCdnCollector{
 		client,
 		map[string]*prometheus.Desc{
