@@ -1,0 +1,13 @@
+.idea/
+*.geany
+*~
+
+.go-build/
+main
+sbercdn-exporter
+
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+

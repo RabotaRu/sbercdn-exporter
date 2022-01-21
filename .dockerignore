@@ -1,0 +1,4 @@
+.git*
+sbercdn-exporter
+*.geany
+*~

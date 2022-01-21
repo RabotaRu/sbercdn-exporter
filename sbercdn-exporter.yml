@@ -1,0 +1,11 @@
+---
+listen:
+  address: ":9921"
+  cert_file: 
+  privkey_file: 
+
+api:
+  url: "https://api.cdn.sber.cloud"
+  auth:
+    username: "username@example.com"
+    password: "password"
