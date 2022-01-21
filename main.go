@@ -114,7 +114,7 @@ func main() {
 	if err != nil && (flags["config"] || !os.IsNotExist(err)) {
 		log.Fatalln("could not read config file:", err)
 	}
-	readConfigFromEnv("SC", "yaml", &config)
+	readConfigFromEnv("SCE", "yaml", &config)
 	// log.Printf("config is: %+v\n", config)
 	if strings.HasPrefix(config.Listen.Address, ":") {
 		config.Listen.Address = "0.0.0.0" + config.Listen.Address
