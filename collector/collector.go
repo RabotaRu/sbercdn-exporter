@@ -1,4 +1,4 @@
-package main
+package collector
 
 import (
 	"log"
@@ -17,12 +17,12 @@ func NewSberCdnCollector(client *api_client.SberCdnApiClient) *SberCdnCollector 
 		client,
 		map[string]*prometheus.Desc{
 			"cert_start": prometheus.NewDesc(
-				"certificate_valid_since",
+				"sbercdn_certificate_valid_since",
 				"Float64 representing UNIX time in seconds since EPOCH since which certificate is valid",
 				[]string{"alt", "cn", "comment", "issuer"},
 				nil),
 			"cert_end": prometheus.NewDesc(
-				"certificate_valid_till",
+				"sbercdn_certificate_valid_till",
 				"Float64 representing UNIX time in seconds since EPOCH till which certificate is valid",
 				[]string{"alt", "cn", "comment", "issuer"},
 				nil),

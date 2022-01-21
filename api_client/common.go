@@ -11,48 +11,74 @@ import (
 	"strings"
 	"time"
 
-	// nolint: stylecheck
-	. "git.rabota.space/infrastructure/sbercdn-exporter/common"
+	cmn "git.rabota.space/infrastructure/sbercdn-exporter/common"
 )
 
 type SberCdnApiClient struct {
-	*ClientConf
+	*cmn.ClientConf
 	hc              *http.Client
 	auth_token_time time.Time
 	auth_token      string
 }
 
-func NewSberCdnApiClient(options *ClientConf) *SberCdnApiClient {
-	return &SberCdnApiClient{
+func NewSberCdnApiClient(options *cmn.ClientConf) (client *SberCdnApiClient, err error) {
+	client = &SberCdnApiClient{
 		hc:         &http.Client{},
 		ClientConf: options,
 	}
+	_, err = client.auth()
+	if err != nil {
+		return nil, fmt.Errorf("initial authorization failed %w", err)
+	}
+	err = client.getAccountId()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get account id: %w", err)
+	}
+	return client, err
 }
 
-func (ac *SberCdnApiClient) auth() (auth_token string, err error) {
+func (c *SberCdnApiClient) getAccountId() (err error) {
+	body, err := c.Get("/app/inventory/v1/accounts/")
+	if err != nil {
+		return fmt.Errorf("failed to GET account_id")
+	}
+	var accs []map[string]string
+	err = json.Unmarshal(body, &accs)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal accounts %w, \n\t%v", err, string(body))
+	}
+	if len(accs) == 0 {
+		return fmt.Errorf("failed to find account_id, empty accounts list")
+	}
+	c.Auth.Id = strings.Split(accs[0]["uid"], "-")[2]
+	log.Printf("using account: \"%v\"", c.Auth.Id)
+	return
+}
+
+func (c *SberCdnApiClient) auth() (auth_token string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("failed to update auth token:", r)
 		}
 	}()
-	if ac.auth_token != "" && time.Since(ac.auth_token_time) < (ac.Auth.TokenLifetime-ac.MaxQueryTime) {
-		return ac.auth_token, err
+	if c.auth_token != "" && time.Since(c.auth_token_time) < (c.Auth.TokenLifetime-c.MaxQueryTime) {
+		return c.auth_token, err
 	}
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		"POST",
-		ac.ApiUrl+ac.Auth.Urn,
+		c.Url+c.Auth.Urn,
 		strings.NewReader(
 			url.Values{
-				"username": {ac.Auth.Username},
-				"password": {ac.Auth.Password},
+				"username": {c.Auth.Username},
+				"password": {c.Auth.Password},
 			}.Encode(),
 		),
 	)
 	if err != nil {
 		log.Panicln("Error creating new auth request")
 	}
-	resp, err := ac.hc.Do(req)
+	resp, err := c.hc.Do(req)
 	if err != nil {
 		log.Panicln("Error sending auth request")
 	}
@@ -72,16 +98,17 @@ func (ac *SberCdnApiClient) auth() (auth_token string, err error) {
 	}
 
 	if auth_token, ok := um["token"].(string); ok {
-		ac.auth_token = auth_token
-		ac.auth_token_time = time.Now()
+		c.auth_token = auth_token
+		c.auth_token_time = time.Now()
+		log.Println("Authorized successfully!")
 	} else {
 		err := fmt.Errorf("token is not a string")
 		log.Panicln("%w", err)
 	}
-	return ac.auth_token, err
+	return c.auth_token, err
 }
 
-func (ac *SberCdnApiClient) Get(urn string) (body []byte, err error) {
+func (c *SberCdnApiClient) Get(urn string) (body []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("failed to get certificates list:", r)
@@ -91,17 +118,17 @@ func (ac *SberCdnApiClient) Get(urn string) (body []byte, err error) {
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		"GET",
-		ac.ApiUrl+strings.ReplaceAll(ac.URNs[urn], "{{ auth.id }}", ac.Auth.Id),
+		c.Url+urn,
 		http.NoBody)
 	if err != nil {
 		log.Panicf("failed to prepare request for cert list: %v\n", err)
 	}
-	auth_token, err := ac.auth()
+	auth_token, err := c.auth()
 	if err != nil {
 		log.Panicln(err)
 	}
 	req.Header.Add("Cdn-Auth-Token", auth_token)
-	resp, err := ac.hc.Do(req)
+	resp, err := c.hc.Do(req)
 	if err != nil {
 		log.Panicf("failed to send request for cert list %v\n", err)
 	}

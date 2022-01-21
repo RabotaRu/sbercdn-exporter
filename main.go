@@ -14,10 +14,9 @@ import (
 	"syscall"
 	"time"
 
-	"git.rabota.space/infrastructure/sbercdn-exporter/api_client"
-
-	// nolint: stylecheck
-	. "git.rabota.space/infrastructure/sbercdn-exporter/common"
+	ac "git.rabota.space/infrastructure/sbercdn-exporter/api_client"
+	col "git.rabota.space/infrastructure/sbercdn-exporter/collector"
+	cmn "git.rabota.space/infrastructure/sbercdn-exporter/common"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/yaml.v2"
@@ -25,17 +24,22 @@ import (
 
 var (
 	Version = "dev"
-	config  = AppConf{
-		Client: ClientConf{
-			ApiUrl: "https://api.cdn.sber.cloud",
-			Auth: Auth{
+	config  = cmn.AppConf{
+		Client: cmn.ClientConf{
+			Url: "https://api.cdn.sber.cloud",
+			Auth: cmn.Auth{
 				Urn:           "/app/oauth/v1/token/",
-				TokenLifetime: time.Hour * 6,
+				TokenLifetime: 6 * time.Hour,
 			},
-			URNs:         map[string]string{"CertList": "/app/ssl/v1/account/{{ auth.id }}/certificate/"},
-			MaxQueryTime: time.Second * 10,
+			Endpoints: map[string]string{
+				"CertList":             "/app/ssl/v1/account/{{ auth.id }}/certificate/",
+				"TrafficStats":         "/app/statistic/v3/",
+				"TrafficStatsResource": "/app/statistic/v3/resources",
+			},
+			MaxQueryTime:   10 * time.Second,
+			ScrapeInterval: 5 * time.Second,
 		},
-		Listen: ListenConf{Address: ":9921"},
+		Listen: cmn.ListenConf{Address: ":9921"},
 	}
 )
 
@@ -74,7 +78,7 @@ func readConfigFromEnv(prefix, tag string, c interface{}) {
 	}
 }
 
-func readConfigFromFile(cf string, config *AppConf) (err error) {
+func readConfigFromFile(cf string, config *cmn.AppConf) (err error) {
 	buf := make([]byte, 4096)
 
 	file, err := os.Open(cf)
@@ -116,8 +120,11 @@ func main() {
 		config.Listen.Address = "0.0.0.0" + config.Listen.Address
 	}
 
-	apiClient := api_client.NewSberCdnApiClient(&config.Client)
-	collector := NewSberCdnCollector(apiClient)
+	apiClient, err := ac.NewSberCdnApiClient(&config.Client)
+	if err != nil {
+		log.Fatalf("failed to start api client: %v", err)
+	}
+	collector := col.NewSberCdnCollector(apiClient)
 	prometheus.MustRegister(collector)
 
 	http.Handle("/metrics", promhttp.Handler())
@@ -140,10 +147,10 @@ func main() {
 	}()
 
 	if config.Listen.CertFile != "" && config.Listen.PrivkeyFile != "" {
-		log.Printf("Begin listening on https://%v/auth", config.Listen.Address)
+		log.Printf("Begin listening on https://%v/metircs", config.Listen.Address)
 		err = srv.ListenAndServeTLS(config.Listen.CertFile, config.Listen.PrivkeyFile)
 	} else {
-		log.Printf("Begin listening on http://%v/auth", config.Listen.Address)
+		log.Printf("Begin listening on http://%v/metrics", config.Listen.Address)
 		err = srv.ListenAndServe()
 	}
 	if !errors.Is(http.ErrServerClosed, err) {

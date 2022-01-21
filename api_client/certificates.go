@@ -3,6 +3,7 @@ package api_client
 import (
 	"encoding/json"
 	"log"
+	"strings"
 )
 
 type CertItem struct {
@@ -20,14 +21,14 @@ type CertList struct {
 	Status  int        `json:"status"`
 }
 
-func (ac *SberCdnApiClient) GetCertList() (certlist []CertItem, err error) {
+func (c *SberCdnApiClient) GetCertList() (certlist []CertItem, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("failed to get certificates list:", r)
 		}
 	}()
 
-	body, err := ac.Get("CertList")
+	body, err := c.Get(strings.ReplaceAll(c.Endpoints["CertList"], "{{ auth.id }}", c.Auth.Id))
 	if err != nil {
 		log.Panicln("failed to get certificates list:", err)
 	}

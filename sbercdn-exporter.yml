@@ -4,9 +4,8 @@ listen:
   cert_file: 
   privkey_file: 
 
-API:
-  URL: "https://api.cdn.sber.cloud"
+api:
+  url: "https://api.cdn.sber.cloud"
   auth:
-    id: "exampleid"
     username: "username@example.com"
     password: "password"

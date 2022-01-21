@@ -2,6 +2,7 @@
 *.geany
 *~
 
+.go-build/
 main
 sbercdn-exporter
 
