@@ -1,20 +1,17 @@
+---
+include:
+  - project: 'sre/iac/ci'
+    ref: master
+    file:
+      - 'hidden/buildkit.yml'
+
 stages:
   - PreTest
   - Build
 
 variables:
   VERSION: "0.1.0"
-
-before_script:
-  - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
-
-.build_image: &build_image
-  script:
-    - docker build --build-arg "VERSION=$VERSION" -f Dockerfile -t $CI_REGISTRY_IMAGE:$VERSION .
-    - docker run --rm $CI_REGISTRY_IMAGE:$VERSION -version
-    - docker push $CI_REGISTRY_IMAGE:$VERSION
-  tags:
-    - docker-build
+  GOLANG_VERSION: "1.17"
 
 golang-lint:
   stage: PreTest
@@ -23,9 +20,11 @@ golang-lint:
     - docker run --rm -v "$PWD":/app -w /app golangci/golangci-lint:latest golangci-lint --color always run
 
 image build and push:
-  <<: *build_image
+  extends: .buildkit
   stage: Build
   only:
     - master
   tags:
     - docker-build
+  variables:
+    BUILDKIT_CUSTOM_ARGS: "--opt build-arg:VERSION=${VERSION} --opt build-arg:GOLANG_VERSION=${GOLANG_VERSION}"
