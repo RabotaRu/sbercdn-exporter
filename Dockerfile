@@ -10,13 +10,18 @@ ENV CGO_ENABLED=0
 WORKDIR sbercdn-exporter
 
 # Copy src code from the host and compile it
+COPY api_client ./api_client
+COPY common ./common
+COPY collector ./collector
 COPY go.* *.go ./
-RUN go mod download
-RUN go build -a -trimpath -ldflags "-X main.Version=$VERSION -w" -o /sbercdn-exporter
+RUN set -xe && \
+    go mod tidy && \
+    go build -a -trimpath -ldflags "-X main.Version=$VERSION -w" -o /sbercdn-exporter
 
 ###
 FROM scratch
 LABEL maintainer="o.marin@rabota.ru"
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /sbercdn-exporter /bin/
+EXPOSE 9921/tcp
 ENTRYPOINT ["/bin/sbercdn-exporter"]
