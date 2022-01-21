@@ -14,7 +14,7 @@ COPY api_client ./api_client
 COPY common ./common
 COPY collector ./collector
 COPY go.* *.go ./
-RUN set -xe && 
+RUN set -xe && \
     go mod tidy && \
     go build -a -trimpath -ldflags "-X main.Version=$VERSION -w" -o /sbercdn-exporter
 
