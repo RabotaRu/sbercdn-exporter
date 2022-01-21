@@ -10,7 +10,7 @@ stages:
   - Build
 
 variables:
-  VERSION: "0.1.0"
+  VERSION: $CI_COMMIT_TAG
   GOLANG_VERSION: "1.17"
 
 golang-lint:
@@ -23,6 +23,7 @@ image build and push:
   extends: .buildkit
   stage: Build
   only:
+    - tags
     - master
   tags:
     - docker-build
