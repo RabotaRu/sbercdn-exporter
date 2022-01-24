@@ -61,7 +61,7 @@ func (c *SberCdnSummaryCollector) Collect(mch chan<- prometheus.Metric) {
 	mch <- prometheus.MustNewConstMetric(
 		c.metrics["sum_bw"].desc,
 		c.metrics["sum_bw"].valueType,
-		float64(sst.Bandwidth))
+		sst.Bandwidth)
 	mch <- prometheus.MustNewConstMetric(
 		c.metrics["sum_ratio"].desc,
 		c.metrics["sum_ratio"].valueType,
@@ -69,9 +69,9 @@ func (c *SberCdnSummaryCollector) Collect(mch chan<- prometheus.Metric) {
 	mch <- prometheus.MustNewConstMetric(
 		c.metrics["sum_hits"].desc,
 		c.metrics["sum_hits"].valueType,
-		float64(sst.Hits))
+		sst.Hits)
 	mch <- prometheus.MustNewConstMetric(
 		c.metrics["sum_traf"].desc,
 		c.metrics["sum_traf"].valueType,
-		float64(sst.Traffic))
+		sst.Traffic)
 }

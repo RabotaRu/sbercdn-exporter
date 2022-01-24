@@ -12,10 +12,10 @@ const (
 )
 
 type Stats struct {
-	Hits       int64 `json:"hits"`        // 2104772,
-	Traffic    int64 `json:"traffic"`     // 40603470765,
+	Hits       float64 `json:"hits"`        // 2104772,
+	Traffic    float64 `json:"traffic"`     // 40603470765,
 	CacheRatio float64 `json:"cache_ratio"` // 0.8231922443391645,
-	Bandwidth  int64 `json:"bandwidth"`   // 5612541
+	Bandwidth  float64 `json:"bandwidth"`   // 5612541
 }
 
 type ResourceStats struct {

@@ -18,8 +18,8 @@ type SberCdnApiClient struct {
 	*cmn.ClientConf
 	hc              *http.Client
 	auth_token_time time.Time
-	auth_token      string
 	ctx             context.Context
+	auth_token      string
 }
 
 func NewSberCdnApiClient(options *cmn.ClientConf) (client *SberCdnApiClient, err error) {
@@ -125,7 +125,6 @@ func (c *SberCdnApiClient) Get(urn string, query url.Values) (body []byte, err e
 		log.Panicf("failed to prepare request for cert list: %v\n", err)
 	}
 	req.URL.RawQuery = query.Encode()
-	log.Println("URL:", req.URL)
 	auth_token, err := c.auth()
 	if err != nil {
 		log.Panicln(err)
