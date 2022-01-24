@@ -31,13 +31,8 @@ var (
 				Urn:           "/app/oauth/v1/token/",
 				TokenLifetime: 6 * time.Hour,
 			},
-			Endpoints: map[string]string{
-				"CertList":             "/app/ssl/v1/account/{{ auth.id }}/certificate/",
-				"TrafficStats":         "/app/statistic/v3/",
-				"TrafficStatsResource": "/app/statistic/v3/resources",
-			},
 			MaxQueryTime:   10 * time.Second,
-			ScrapeInterval: 5 * time.Second,
+			ScrapeInterval: time.Minute,
 		},
 		Listen: cmn.ListenConf{Address: ":9921"},
 	}
@@ -124,8 +119,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to start api client: %v", err)
 	}
-	collector := col.NewSberCdnCollector(apiClient)
-	prometheus.MustRegister(collector)
+
+	prometheus.MustRegister(col.NewSberCdnCertCollector(apiClient))
+	prometheus.MustRegister(col.NewSberCdnSummaryCollector(apiClient))
 
 	http.Handle("/metrics", promhttp.Handler())
 

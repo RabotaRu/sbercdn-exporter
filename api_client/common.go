@@ -18,6 +18,7 @@ type SberCdnApiClient struct {
 	*cmn.ClientConf
 	hc              *http.Client
 	auth_token_time time.Time
+	ctx             context.Context
 	auth_token      string
 }
 
@@ -25,6 +26,7 @@ func NewSberCdnApiClient(options *cmn.ClientConf) (client *SberCdnApiClient, err
 	client = &SberCdnApiClient{
 		hc:         &http.Client{},
 		ClientConf: options,
+		ctx:        context.Background(),
 	}
 	_, err = client.auth()
 	if err != nil {
@@ -38,7 +40,7 @@ func NewSberCdnApiClient(options *cmn.ClientConf) (client *SberCdnApiClient, err
 }
 
 func (c *SberCdnApiClient) getAccountId() (err error) {
-	body, err := c.Get("/app/inventory/v1/accounts/")
+	body, err := c.Get("/app/inventory/v1/accounts/", url.Values{})
 	if err != nil {
 		return fmt.Errorf("failed to GET account_id")
 	}
@@ -59,6 +61,7 @@ func (c *SberCdnApiClient) auth() (auth_token string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("failed to update auth token:", r)
+			auth_token = ""
 		}
 	}()
 	if c.auth_token != "" && time.Since(c.auth_token_time) < (c.Auth.TokenLifetime-c.MaxQueryTime) {
@@ -108,21 +111,20 @@ func (c *SberCdnApiClient) auth() (auth_token string, err error) {
 	return c.auth_token, err
 }
 
-func (c *SberCdnApiClient) Get(urn string) (body []byte, err error) {
+func (c *SberCdnApiClient) Get(urn string, query url.Values) (body []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("failed to get certificates list:", r)
+			body = nil
 		}
 	}()
 
-	req, err := http.NewRequestWithContext(
-		context.Background(),
-		"GET",
-		c.Url+urn,
-		http.NoBody)
+	ctx, cancel := context.WithTimeout(c.ctx, c.ScrapeInterval)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", c.Url+urn, http.NoBody)
 	if err != nil {
 		log.Panicf("failed to prepare request for cert list: %v\n", err)
 	}
+	req.URL.RawQuery = query.Encode()
 	auth_token, err := c.auth()
 	if err != nil {
 		log.Panicln(err)
