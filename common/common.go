@@ -13,11 +13,10 @@ type Auth struct {
 }
 
 type ClientConf struct {
-	Url            string            `yaml:"url"`
-	Endpoints      map[string]string `yaml:"endpoints"`
-	Auth           Auth              `yaml:"auth"`
-	MaxQueryTime   time.Duration     `yaml:"max_query_time"`
-	ScrapeInterval time.Duration     `yaml:"scrape_interval"`
+	Url            string        `yaml:"url"`
+	Auth           Auth          `yaml:"auth"`
+	MaxQueryTime   time.Duration `yaml:"max_query_time"`
+	ScrapeInterval time.Duration `yaml:"scrape_interval"`
 }
 
 type ListenConf struct {
