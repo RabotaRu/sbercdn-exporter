@@ -2,8 +2,9 @@ package api_client
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
-	"strings"
+	"net/url"
 )
 
 type CertItem struct {
@@ -21,21 +22,22 @@ type CertList struct {
 	Status  int        `json:"status"`
 }
 
-func (c *SberCdnApiClient) GetCertList() (certlist []CertItem, err error) {
+func (c *SberCdnApiClient) GetCertList() (certlist CertList, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("failed to get certificates list:", r)
 		}
 	}()
 
-	body, err := c.Get(strings.ReplaceAll(c.Endpoints["CertList"], "{{ auth.id }}", c.Auth.Id))
+	body, err := c.Get(
+		fmt.Sprintf("/app/ssl/v1/account/%v/certificate/", c.Auth.Id),
+		url.Values{})
 	if err != nil {
 		log.Panicln("failed to get certificates list:", err)
 	}
-	var result CertList
-	err = json.Unmarshal(body, &result)
+	err = json.Unmarshal(body, &certlist)
 	if err != nil {
 		log.Panicf("failed to unmarshal cert list")
 	}
-	return result.Data, err
+	return certlist, err
 }
