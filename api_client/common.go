@@ -14,11 +14,16 @@ import (
 	cmn "git.rabota.space/infrastructure/sbercdn-exporter/common"
 )
 
+const (
+	TimeRangeFormat = "2006-01-02T15:04:05"
+)
+
 type SberCdnApiClient struct {
 	*cmn.ClientConf
 	hc              *http.Client
 	auth_token_time time.Time
 	ctx             context.Context
+	endpoints       map[string]string
 	auth_token      string
 }
 
@@ -35,6 +40,12 @@ func NewSberCdnApiClient(options *cmn.ClientConf) (client *SberCdnApiClient, err
 	err = client.getAccountId()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account id: %w", err)
+	}
+	client.endpoints = map[string]string{
+		"certList":  fmt.Sprintf("/app/ssl/v1/account/%v/certificate/", client.Auth.Id),
+		"summary":   "/app/statistic/v3/",
+		"codes":     "/app/statistic/v3/codes",
+		"resources": "/app/statistic/v3/resources",
 	}
 	return client, err
 }
@@ -140,4 +151,26 @@ func (c *SberCdnApiClient) Get(urn string, query url.Values) (body []byte, err e
 		log.Panicf("faile to read response body for cert list %v\n", err)
 	}
 	return body, err
+}
+
+func (c *SberCdnApiClient) GetMetrics(endtime time.Time, endpoint string) (ms map[string]interface{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			ms = nil
+		}
+	}()
+	v := url.Values{}
+	v.Set("account", c.Auth.Id)
+	v.Set("end", endtime.Truncate(time.Minute).Format(TimeRangeFormat))
+	v.Set("start", endtime.Add(c.ScrapeInterval*-1).Truncate(time.Minute).Format(TimeRangeFormat))
+
+	body, err := c.Get(c.endpoints[endpoint], v)
+	if err != nil {
+		log.Panicln("failed to query summary stats")
+	}
+	err = json.Unmarshal(body, &ms)
+	if err != nil {
+		log.Panicf("failed to unmarshal %v stats: %v", endpoint, err)
+	}
+	return ms
 }
