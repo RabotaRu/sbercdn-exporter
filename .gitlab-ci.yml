@@ -13,6 +13,11 @@ variables:
   VERSION: $CI_COMMIT_TAG
   GOLANG_VERSION: "1.17"
 
+
+.buildkit:
+  variables:
+    BUILDKIT_CUSTOM_ARGS: "--opt build-arg:VERSION=${VERSION} --opt build-arg:GOLANG_VERSION=${GOLANG_VERSION}"
+
 golang-lint:
   stage: PreTest
   script:
@@ -27,5 +32,3 @@ image build and push:
     - master
   tags:
     - docker-build
-  variables:
-    BUILDKIT_CUSTOM_ARGS: "--opt build-arg:VERSION=${VERSION} --opt build-arg:GOLANG_VERSION=${GOLANG_VERSION}"
