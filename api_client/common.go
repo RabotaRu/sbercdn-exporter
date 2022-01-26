@@ -22,7 +22,6 @@ type SberCdnApiClient struct {
 	*cmn.ClientConf
 	hc              *http.Client
 	auth_token_time time.Time
-	ctx             context.Context
 	endpoints       map[string]string
 	auth_token      string
 }
@@ -31,7 +30,6 @@ func NewSberCdnApiClient(options *cmn.ClientConf) (client *SberCdnApiClient, err
 	client = &SberCdnApiClient{
 		hc:         &http.Client{},
 		ClientConf: options,
-		ctx:        context.Background(),
 	}
 	_, err = client.auth()
 	if err != nil {
@@ -105,13 +103,13 @@ func (c *SberCdnApiClient) auth() (auth_token string, err error) {
 		log.Panicln("Error reading auth response body")
 	}
 
-	var um map[string]interface{}
-	err = json.Unmarshal(body, &um)
+	var data map[string]interface{}
+	err = json.Unmarshal(body, &data)
 	if err != nil {
 		log.Panicln("Error unmarshaling auth response json body")
 	}
 
-	if auth_token, ok := um["token"].(string); ok {
+	if auth_token, ok := data["token"].(string); ok {
 		c.auth_token = auth_token
 		c.auth_token_time = time.Now()
 		log.Println("Authorized successfully!")
@@ -129,7 +127,7 @@ func (c *SberCdnApiClient) Get(urn string, query url.Values) (body []byte, err e
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(c.ctx, c.ScrapeInterval)
+	ctx, cancel := context.WithTimeout(context.Background(), c.ScrapeInterval)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "GET", c.Url+urn, http.NoBody)
 	if err != nil {
