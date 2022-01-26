@@ -94,7 +94,7 @@ func (c *SberCdnSummaryCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *SberCdnSummaryCollector) Collect(mch chan<- prometheus.Metric) {
-	endtime := time.Now().UTC()
+	endtime := time.Now().UTC().Truncate(time.Minute).Add(time.Minute * -5)
 	var wg sync.WaitGroup
 	wg.Add(3)
 
@@ -104,22 +104,30 @@ func (c *SberCdnSummaryCollector) Collect(mch chan<- prometheus.Metric) {
 		if len(mtrc) == 0 {
 			return
 		}
-		mch <- prometheus.MustNewConstMetric(
-			c.metrics["bw"].desc,
-			c.metrics["bw"].valueType,
-			mtrc["bandwidth"].(float64))
-		mch <- prometheus.MustNewConstMetric(
-			c.metrics["ratio"].desc,
-			c.metrics["ratio"].valueType,
-			mtrc["cache_ratio"].(float64))
-		mch <- prometheus.MustNewConstMetric(
-			c.metrics["hits"].desc,
-			c.metrics["hits"].valueType,
-			mtrc["hits"].(float64))
-		mch <- prometheus.MustNewConstMetric(
-			c.metrics["traf"].desc,
-			c.metrics["traf"].valueType,
-			mtrc["traffic"].(float64))
+		mch <- prometheus.NewMetricWithTimestamp(
+			endtime,
+			prometheus.MustNewConstMetric(
+				c.metrics["bw"].desc,
+				c.metrics["bw"].valueType,
+				mtrc["bandwidth"].(float64)))
+		mch <- prometheus.NewMetricWithTimestamp(
+			endtime,
+			prometheus.MustNewConstMetric(
+				c.metrics["ratio"].desc,
+				c.metrics["ratio"].valueType,
+				mtrc["cache_ratio"].(float64)))
+		mch <- prometheus.NewMetricWithTimestamp(
+			endtime,
+			prometheus.MustNewConstMetric(
+				c.metrics["hits"].desc,
+				c.metrics["hits"].valueType,
+				mtrc["hits"].(float64)))
+		mch <- prometheus.NewMetricWithTimestamp(
+			endtime,
+			prometheus.MustNewConstMetric(
+				c.metrics["traf"].desc,
+				c.metrics["traf"].valueType,
+				mtrc["traffic"].(float64)))
 	}()
 
 	go func() {
@@ -133,22 +141,30 @@ func (c *SberCdnSummaryCollector) Collect(mch chan<- prometheus.Metric) {
 			if !ok {
 				return
 			}
-			mch <- prometheus.MustNewConstMetric(
-				c.metrics["code_bw"].desc,
-				c.metrics["code_bw"].valueType,
-				met["bandwidth"].(float64), fmt.Sprintf("%v", met["code"].(float64)))
-			mch <- prometheus.MustNewConstMetric(
-				c.metrics["code_ratio"].desc,
-				c.metrics["code_ratio"].valueType,
-				met["cache_ratio"].(float64), fmt.Sprintf("%v", met["code"].(float64)))
-			mch <- prometheus.MustNewConstMetric(
-				c.metrics["code_hits"].desc,
-				c.metrics["code_hits"].valueType,
-				met["hits"].(float64), fmt.Sprintf("%v", met["code"].(float64)))
-			mch <- prometheus.MustNewConstMetric(
-				c.metrics["code_traf"].desc,
-				c.metrics["code_traf"].valueType,
-				met["traffic"].(float64), fmt.Sprintf("%v", met["code"].(float64)))
+			mch <- prometheus.NewMetricWithTimestamp(
+				endtime,
+				prometheus.MustNewConstMetric(
+					c.metrics["code_bw"].desc,
+					c.metrics["code_bw"].valueType,
+					met["bandwidth"].(float64), fmt.Sprintf("%v", met["code"].(float64))))
+			mch <- prometheus.NewMetricWithTimestamp(
+				endtime,
+				prometheus.MustNewConstMetric(
+					c.metrics["code_ratio"].desc,
+					c.metrics["code_ratio"].valueType,
+					met["cache_ratio"].(float64), fmt.Sprintf("%v", met["code"].(float64))))
+			mch <- prometheus.NewMetricWithTimestamp(
+				endtime,
+				prometheus.MustNewConstMetric(
+					c.metrics["code_hits"].desc,
+					c.metrics["code_hits"].valueType,
+					met["hits"].(float64), fmt.Sprintf("%v", met["code"].(float64))))
+			mch <- prometheus.NewMetricWithTimestamp(
+				endtime,
+				prometheus.MustNewConstMetric(
+					c.metrics["code_traf"].desc,
+					c.metrics["code_traf"].valueType,
+					met["traffic"].(float64), fmt.Sprintf("%v", met["code"].(float64))))
 		}
 	}()
 
@@ -163,22 +179,30 @@ func (c *SberCdnSummaryCollector) Collect(mch chan<- prometheus.Metric) {
 			if !ok {
 				return
 			}
-			mch <- prometheus.MustNewConstMetric(
-				c.metrics["res_bw"].desc,
-				c.metrics["res_bw"].valueType,
-				met["bandwidth"].(float64), met["resource_name"].(string))
-			mch <- prometheus.MustNewConstMetric(
-				c.metrics["res_ratio"].desc,
-				c.metrics["res_ratio"].valueType,
-				met["cache_ratio"].(float64), met["resource_name"].(string))
-			mch <- prometheus.MustNewConstMetric(
-				c.metrics["res_hits"].desc,
-				c.metrics["res_hits"].valueType,
-				met["hits"].(float64), met["resource_name"].(string))
-			mch <- prometheus.MustNewConstMetric(
-				c.metrics["res_traf"].desc,
-				c.metrics["res_traf"].valueType,
-				met["traffic"].(float64), met["resource_name"].(string))
+			mch <- prometheus.NewMetricWithTimestamp(
+				endtime,
+				prometheus.MustNewConstMetric(
+					c.metrics["res_bw"].desc,
+					c.metrics["res_bw"].valueType,
+					met["bandwidth"].(float64), met["resource_name"].(string)))
+			mch <- prometheus.NewMetricWithTimestamp(
+				endtime,
+				prometheus.MustNewConstMetric(
+					c.metrics["res_ratio"].desc,
+					c.metrics["res_ratio"].valueType,
+					met["cache_ratio"].(float64), met["resource_name"].(string)))
+			mch <- prometheus.NewMetricWithTimestamp(
+				endtime,
+				prometheus.MustNewConstMetric(
+					c.metrics["res_hits"].desc,
+					c.metrics["res_hits"].valueType,
+					met["hits"].(float64), met["resource_name"].(string)))
+			mch <- prometheus.NewMetricWithTimestamp(
+				endtime,
+				prometheus.MustNewConstMetric(
+					c.metrics["res_traf"].desc,
+					c.metrics["res_traf"].valueType,
+					met["traffic"].(float64), met["resource_name"].(string)))
 		}
 	}()
 
