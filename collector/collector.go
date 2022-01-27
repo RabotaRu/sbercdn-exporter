@@ -29,8 +29,8 @@ func NewSberCdnSummaryCollector(client *api_client.SberCdnApiClient) *SberCdnSum
 				[]string{},
 				nil), prometheus.GaugeValue},
 			"cache_ratio": {prometheus.NewDesc(
-				"sbercdn_cache_ration",
-				"Cache hit ration total",
+				"sbercdn_cache_ratio",
+				"Cache hit ratio total",
 				[]string{},
 				nil), prometheus.GaugeValue},
 			"hits": {prometheus.NewDesc(
@@ -49,8 +49,8 @@ func NewSberCdnSummaryCollector(client *api_client.SberCdnApiClient) *SberCdnSum
 				[]string{"code"},
 				nil), prometheus.GaugeValue},
 			"code_cache_ratio": {prometheus.NewDesc(
-				"sbercdn_code_cache_ration",
-				"Cache hit ration by http code",
+				"sbercdn_code_cache_ratio",
+				"Cache hit ratio by http code",
 				[]string{"code"},
 				nil), prometheus.GaugeValue},
 			"code_hits": {prometheus.NewDesc(
@@ -69,8 +69,8 @@ func NewSberCdnSummaryCollector(client *api_client.SberCdnApiClient) *SberCdnSum
 				[]string{"resource_name"},
 				nil), prometheus.GaugeValue},
 			"resource_cache_ratio": {prometheus.NewDesc(
-				"sbercdn_resource_cache_ration",
-				"Cache hit ration by resource name",
+				"sbercdn_resource_cache_ratio",
+				"Cache hit ratio by resource name",
 				[]string{"resource_name"},
 				nil), prometheus.GaugeValue},
 			"resource_hits": {prometheus.NewDesc(
