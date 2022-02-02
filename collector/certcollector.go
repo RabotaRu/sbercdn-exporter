@@ -23,7 +23,7 @@ func NewSberCdnCertCollector(client *api_client.SberCdnApiClient) *SberCdnCertCo
 				nil),
 			"cert_end": prometheus.NewDesc(
 				"sbercdn_certificate_valid_till",
-				" UNIX time in seconds since EPOCH till which certificate is valid",
+				"UNIX time in seconds since EPOCH till which certificate is valid",
 				[]string{"cn"},
 				nil),
 		},
