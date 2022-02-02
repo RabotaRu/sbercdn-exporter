@@ -9,82 +9,54 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	namespace = "sbercdn"
+	summary   = "summary"
+)
+
 type Metric struct {
 	desc      *prometheus.Desc
 	valueType prometheus.ValueType
 }
 
 type SberCdnSummaryCollector struct {
-	client  *api_client.SberCdnApiClient
-	metrics map[string]*Metric
+	client        *api_client.SberCdnApiClient
+	metrics       map[string]*Metric
+	metric_names  map[string]string
+	metric_groups []string
 }
 
 func NewSberCdnSummaryCollector(client *api_client.SberCdnApiClient) *SberCdnSummaryCollector {
-	return &SberCdnSummaryCollector{
-		client,
-		map[string]*Metric{
-			"bandwidth": {prometheus.NewDesc(
-				"sbercdn_bandwidth",
-				"Peak bandwidth total",
-				[]string{},
-				nil), prometheus.GaugeValue},
-			"cache_ratio": {prometheus.NewDesc(
-				"sbercdn_cache_ratio",
-				"Cache hit ratio total",
-				[]string{},
-				nil), prometheus.GaugeValue},
-			"hits": {prometheus.NewDesc(
-				"sbercdn_hits",
-				"Cache hits total",
-				[]string{},
-				nil), prometheus.GaugeValue},
-			"traffic": {prometheus.NewDesc(
-				"sbercdn_traffic",
-				"Traffic total",
-				[]string{},
-				nil), prometheus.GaugeValue},
-			"code_bandwidth": {prometheus.NewDesc(
-				"sbercdn_code_bandwidth",
-				"Peak bandwidth by http code",
-				[]string{"code"},
-				nil), prometheus.GaugeValue},
-			"code_cache_ratio": {prometheus.NewDesc(
-				"sbercdn_code_cache_ratio",
-				"Cache hit ratio by http code",
-				[]string{"code"},
-				nil), prometheus.GaugeValue},
-			"code_hits": {prometheus.NewDesc(
-				"sbercdn_code_hits",
-				"Cache hits by http code",
-				[]string{"code"},
-				nil), prometheus.GaugeValue},
-			"code_traffic": {prometheus.NewDesc(
-				"sbercdn_code_traffic",
-				"Traffic by http code",
-				[]string{"code"},
-				nil), prometheus.GaugeValue},
-			"resource_bandwidth": {prometheus.NewDesc(
-				"sbercdn_resource_bandwidth",
-				"Peak bandwidth by resource name",
-				[]string{"resource_name"},
-				nil), prometheus.GaugeValue},
-			"resource_cache_ratio": {prometheus.NewDesc(
-				"sbercdn_resource_cache_ratio",
-				"Cache hit ratio by resource name",
-				[]string{"resource_name"},
-				nil), prometheus.GaugeValue},
-			"resource_hits": {prometheus.NewDesc(
-				"sbercdn_resource_hits",
-				"Cache hits by resource name",
-				[]string{"resource_name"},
-				nil), prometheus.GaugeValue},
-			"resource_traffic": {prometheus.NewDesc(
-				"sbercdn_resource_traffic",
-				"Traffic by resource name",
-				[]string{"resource_name"},
-				nil), prometheus.GaugeValue},
+	col := SberCdnSummaryCollector{
+		client:        client,
+		metrics:       make(map[string]*Metric),
+		metric_groups: []string{summary, "code", "resource"},
+		metric_names: map[string]string{
+			"bandwidth":   "Peak bandwidth in bits",
+			"cache_ratio": "Cache hit ratio",
+			"hits":        "Cache hits",
+			"traffic":     "Traffic in bytes",
 		},
 	}
+
+	for _, metric_group_name := range col.metric_groups {
+		for metric_name, metric_help := range col.metric_names {
+			var label_name, help string
+			var labels []string
+			if metric_group_name == summary {
+				help = metric_help + " " + metric_group_name
+			} else {
+				help = metric_help + " by " + metric_group_name
+				label_name = metric_group_name
+				labels = []string{label_name}
+			}
+			col.metrics[prometheus.BuildFQName("", label_name, metric_name)] = &Metric{prometheus.NewDesc(
+				prometheus.BuildFQName(namespace, label_name, metric_name),
+				help, labels,
+				nil), prometheus.GaugeValue}
+		}
+	}
+	return &col
 }
 
 func (c *SberCdnSummaryCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -94,66 +66,62 @@ func (c *SberCdnSummaryCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *SberCdnSummaryCollector) Collect(mch chan<- prometheus.Metric) {
-	endtime := time.Now().UTC().Truncate(time.Minute).Add(time.Minute * -5)
+	endtime := time.Now().UTC().Truncate(time.Minute).Add(time.Minute * -10)
 	var wag sync.WaitGroup
-	wag.Add(3)
 
-	go func() {
+	sendMetrics := func(group_name string) {
 		defer wag.Done()
-		mtrc := c.client.GetMetrics(endtime, "summary")
-		if len(mtrc) == 0 {
-			return
+		var endpoint, group string
+		if group_name != summary {
+			group = group_name
+			endpoint = group + "s"
 		}
-		for key, v := range mtrc {
-			if mtv, ok := v.(float64); ok {
-				mch <- prometheus.NewMetricWithTimestamp(
-					endtime,
-					prometheus.MustNewConstMetric(
-						c.metrics[key].desc,
-						c.metrics[key].valueType,
-						mtv))
+		mtrc := c.client.GetStatistic(endtime, endpoint)
+		if results, ok := mtrc["result"].([]interface{}); !ok {
+			if group_name == summary {
+				for metric_name, value := range mtrc {
+					if metric_value, ok := value.(float64); ok {
+						mch <- prometheus.NewMetricWithTimestamp(
+							endtime,
+							prometheus.MustNewConstMetric(
+								c.metrics[metric_name].desc,
+								c.metrics[metric_name].valueType,
+								metric_value))
+					}
+				}
 			}
-		}
-	}()
-
-	sendMetrics := func(grp string) {
-		defer wag.Done()
-		mtrc := c.client.GetMetrics(endtime, grp+"s")
-		if len(mtrc) == 0 {
-			return
-		}
-		var ok bool
-		var result []interface{}
-		if result, ok = mtrc["result"].([]interface{}); !ok {
-			return
-		}
-		for _, v := range result {
-			met, ok := v.(map[string]interface{})
-			if !ok {
-				return
-			}
-			var label interface{}
-			if label, ok = met[grp+"_name"]; ok {
-				delete(met, grp+"_name")
-			} else {
-				label = met[grp]
-			}
-			delete(met, grp)
-			for key, v := range met {
-				mtnm := grp + "_" + key
-				if mtv, ok := v.(float64); ok {
-					mch <- prometheus.NewMetricWithTimestamp(
-						endtime,
-						prometheus.MustNewConstMetric(
-							c.metrics[mtnm].desc,
-							c.metrics[mtnm].valueType,
-							mtv, fmt.Sprintf("%v", label)))
+		} else {
+			for _, result_value := range results {
+				if metrics, ok := result_value.(map[string]interface{}); ok {
+					var label interface{}
+					if group_name != summary {
+						if label, ok = metrics[group+"_name"]; ok {
+							delete(metrics, group+"_name")
+						} else {
+							label = metrics[group]
+						}
+						delete(metrics, group)
+					}
+					for key, v := range metrics {
+						metric_name := group + "_" + key
+						if metric_value, ok := v.(float64); ok {
+							mch <- prometheus.NewMetricWithTimestamp(
+								endtime,
+								prometheus.MustNewConstMetric(
+									c.metrics[metric_name].desc,
+									c.metrics[metric_name].valueType,
+									metric_value, fmt.Sprintf("%v", label)))
+						}
+					}
 				}
 			}
 		}
 	}
-	go sendMetrics("code")
-	go sendMetrics("resource")
+
+	for _, metric_group_name := range c.metric_groups {
+		wag.Add(1)
+		go sendMetrics(metric_group_name)
+	}
 
 	wag.Wait()
 }

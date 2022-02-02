@@ -29,6 +29,5 @@ image build and push:
   stage: Build
   only:
     - tags
-    - master
   tags:
     - infrastructure

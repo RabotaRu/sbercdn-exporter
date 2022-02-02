@@ -41,9 +41,7 @@ func NewSberCdnApiClient(options *cmn.ClientConf) (client *SberCdnApiClient, err
 	}
 	client.endpoints = map[string]string{
 		"certList":  fmt.Sprintf("/app/ssl/v1/account/%v/certificate/", client.Auth.Id),
-		"summary":   "/app/statistic/v3/",
-		"codes":     "/app/statistic/v3/codes",
-		"resources": "/app/statistic/v3/resources",
+		"statistic": "/app/statistic/v3/",
 	}
 	return client, err
 }
@@ -151,7 +149,7 @@ func (c *SberCdnApiClient) Get(urn string, query url.Values) (body []byte, err e
 	return body, err
 }
 
-func (c *SberCdnApiClient) GetMetrics(endtime time.Time, endpoint string) (ms map[string]interface{}) {
+func (c *SberCdnApiClient) GetStatistic(endtime time.Time, endpoint string) (ms map[string]interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			ms = nil
@@ -162,7 +160,7 @@ func (c *SberCdnApiClient) GetMetrics(endtime time.Time, endpoint string) (ms ma
 	v.Set("end", endtime.Truncate(time.Minute).Format(TimeRangeFormat))
 	v.Set("start", endtime.Add(c.ScrapeInterval*-1).Truncate(time.Minute).Format(TimeRangeFormat))
 
-	body, err := c.Get(c.endpoints[endpoint], v)
+	body, err := c.Get(c.endpoints["statistic"]+endpoint, v)
 	if err != nil {
 		log.Panicln("failed to query summary stats")
 	}
