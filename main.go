@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	ac "git.rabota.space/infrastructure/sbercdn-exporter/api_client"
+	"git.rabota.space/infrastructure/sbercdn-exporter/apiclient"
 	col "git.rabota.space/infrastructure/sbercdn-exporter/collector"
 	cmn "git.rabota.space/infrastructure/sbercdn-exporter/common"
 	"github.com/prometheus/client_golang/prometheus"
@@ -115,13 +115,13 @@ func main() {
 		config.Listen.Address = "0.0.0.0" + config.Listen.Address
 	}
 
-	apiClient, err := ac.NewSberCdnApiClient(&config.Client)
+	apiClient, err := apiclient.NewSberCdnApiClient(&config.Client)
 	if err != nil {
 		log.Fatalf("failed to start api client: %v", err)
 	}
 
 	prometheus.MustRegister(col.NewSberCdnCertCollector(apiClient))
-	prometheus.MustRegister(col.NewSberCdnSummaryCollector(apiClient))
+	prometheus.MustRegister(col.NewSberCdnStatsCollector(apiClient))
 
 	http.Handle("/metrics", promhttp.Handler())
 

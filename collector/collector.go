@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"git.rabota.space/infrastructure/sbercdn-exporter/api_client"
+	"git.rabota.space/infrastructure/sbercdn-exporter/apiclient"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -19,15 +19,15 @@ type Metric struct {
 	valueType prometheus.ValueType
 }
 
-type SberCdnSummaryCollector struct {
-	client        *api_client.SberCdnApiClient
+type SberCdnStatsCollector struct {
+	client        *apiclient.SberCdnApiClient
 	metrics       map[string]*Metric
 	metric_names  map[string]string
 	metric_groups []string
 }
 
-func NewSberCdnSummaryCollector(client *api_client.SberCdnApiClient) *SberCdnSummaryCollector {
-	col := SberCdnSummaryCollector{
+func NewSberCdnStatsCollector(client *apiclient.SberCdnApiClient) *SberCdnStatsCollector {
+	col := SberCdnStatsCollector{
 		client:        client,
 		metrics:       make(map[string]*Metric),
 		metric_groups: []string{summary, "code", "resource"},
@@ -59,13 +59,13 @@ func NewSberCdnSummaryCollector(client *api_client.SberCdnApiClient) *SberCdnSum
 	return &col
 }
 
-func (c *SberCdnSummaryCollector) Describe(ch chan<- *prometheus.Desc) {
+func (c *SberCdnStatsCollector) Describe(ch chan<- *prometheus.Desc) {
 	for _, m := range c.metrics {
 		ch <- m.desc
 	}
 }
 
-func (c *SberCdnSummaryCollector) Collect(mch chan<- prometheus.Metric) {
+func (c *SberCdnStatsCollector) Collect(mch chan<- prometheus.Metric) {
 	endtime := time.Now().UTC().Truncate(time.Minute).Add(time.Minute * -10)
 	var wag sync.WaitGroup
 

@@ -1,4 +1,4 @@
-package api_client
+package apiclient
 
 import (
 	"encoding/json"

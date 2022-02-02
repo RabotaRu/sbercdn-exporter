@@ -3,16 +3,16 @@ package collector
 import (
 	"log"
 
-	"git.rabota.space/infrastructure/sbercdn-exporter/api_client"
+	"git.rabota.space/infrastructure/sbercdn-exporter/apiclient"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 type SberCdnCertCollector struct {
-	client       *api_client.SberCdnApiClient
+	client       *apiclient.SberCdnApiClient
 	descriptions map[string]*prometheus.Desc
 }
 
-func NewSberCdnCertCollector(client *api_client.SberCdnApiClient) *SberCdnCertCollector {
+func NewSberCdnCertCollector(client *apiclient.SberCdnApiClient) *SberCdnCertCollector {
 	return &SberCdnCertCollector{
 		client,
 		map[string]*prometheus.Desc{
