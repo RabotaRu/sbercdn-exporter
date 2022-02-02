@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"reflect"
 	"strings"
 	"syscall"
 	"time"
@@ -19,7 +17,6 @@ import (
 	cmn "git.rabota.space/infrastructure/sbercdn-exporter/common"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -38,63 +35,6 @@ var (
 	}
 )
 
-func readConfigFromEnv(prefix, tag string, c interface{}) {
-	cv := reflect.ValueOf(c)
-	ce := cv.Elem()
-	ct := reflect.Indirect(cv).Type()
-	for i := 0; i < ct.NumField(); i++ {
-		ft := ct.Field(i)
-		fval := ce.Field(i)
-		var_name := strings.ReplaceAll(strings.Trim(strings.ToUpper(
-			prefix+" "+ft.Tag.Get(tag)),
-			" \t\n"),
-			" ", "_")
-		switch fval.Kind() { //nolint: exhaustive
-		case reflect.String:
-			if v, ok := os.LookupEnv(var_name); ok {
-				fval.SetString(v)
-			}
-		case reflect.Int64:
-			// TODO: write more safe value parsing
-			if v, ok := os.LookupEnv(var_name); ok {
-				if v, err := time.ParseDuration(v); err != nil {
-					log.Println("Found env var", var_name, "with value", v)
-				} else {
-					fval.SetInt(v.Nanoseconds())
-				}
-			}
-		case reflect.Struct:
-			readConfigFromEnv(var_name, tag, fval.Addr().Interface())
-		default:
-			if v, ok := os.LookupEnv(var_name); ok {
-				log.Println("Found not catched env var", var_name, "with value", v, "and type", fval.Kind())
-			}
-		}
-	}
-}
-
-func readConfigFromFile(cf string, config *cmn.AppConf) (err error) {
-	buf := make([]byte, 4096)
-
-	file, err := os.Open(cf)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-
-	n, err := file.Read(buf)
-	if err != nil {
-		return
-	}
-
-	err = yaml.Unmarshal(buf[:n], &config)
-	if err != nil {
-		return fmt.Errorf("cannot unmarshal data: %w", err)
-	}
-
-	return
-}
-
 func main() {
 	flags := make(map[string]bool)
 	configPath := flag.String("config", "sbercdn-exporter.yaml", "Path to config file in YAML format")
@@ -105,12 +45,11 @@ func main() {
 	}
 	flag.Visit(func(f *flag.Flag) { flags[f.Name] = true })
 
-	err := readConfigFromFile(*configPath, &config)
+	err := cmn.ReadConfigFromFile(*configPath, &config)
 	if err != nil && (flags["config"] || !os.IsNotExist(err)) {
 		log.Fatalln("could not read config file:", err)
 	}
-	readConfigFromEnv("SCE", "yaml", &config)
-	// log.Printf("config is: %+v\n", config)
+	cmn.ReadConfigFromEnv("SCE", "yaml", &config)
 	if strings.HasPrefix(config.Listen.Address, ":") {
 		config.Listen.Address = "0.0.0.0" + config.Listen.Address
 	}
