@@ -20,7 +20,7 @@ type ClientConf struct {
 	TokenLifetime    time.Duration `yaml:"token_lifetime"`
 	MaxQueryTime     time.Duration `yaml:"max_query_time"`
 	ScrapeInterval   time.Duration `yaml:"scrape_interval"`
-	ScrapeTimeOffset time.Duration `yaml:"scrape_interval"`
+	ScrapeTimeOffset time.Duration `yaml:"scrape_time_offset"`
 }
 
 type ListenConf struct {
