@@ -11,19 +11,16 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type Auth struct {
-	Id            string        `yaml:"id"`
-	Username      string        `yaml:"username"`
-	Password      string        `yaml:"password"`
-	Urn           string        `yaml:"urn"`
-	TokenLifetime time.Duration `yaml:"token_lifetime"`
-}
-
 type ClientConf struct {
-	Url            string        `yaml:"url"`
-	Auth           Auth          `yaml:"auth"`
-	MaxQueryTime   time.Duration `yaml:"max_query_time"`
-	ScrapeInterval time.Duration `yaml:"scrape_interval"`
+	Url              string        `yaml:"url"`
+	AuthUrn          string        `yaml:"auth_urn"`
+	Username         string        `yaml:"username"`
+	Password         string        `yaml:"password"`
+	Accounts         []string      `yaml:"accounts"`
+	TokenLifetime    time.Duration `yaml:"token_lifetime"`
+	MaxQueryTime     time.Duration `yaml:"max_query_time"`
+	ScrapeInterval   time.Duration `yaml:"scrape_interval"`
+	ScrapeTimeOffset time.Duration `yaml:"scrape_interval"`
 }
 
 type ListenConf struct {

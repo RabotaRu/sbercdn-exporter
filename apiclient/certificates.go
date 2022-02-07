@@ -22,7 +22,7 @@ type CertList struct {
 	Status  int        `json:"status"`
 }
 
-func (c *SberCdnApiClient) GetCertList() (certlist CertList, err error) {
+func (c *SberCdnApiClient) GetCertList(account string) (certlist CertList, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("failed to get certificates list:", r)
@@ -30,7 +30,7 @@ func (c *SberCdnApiClient) GetCertList() (certlist CertList, err error) {
 	}()
 
 	body, err := c.Get(
-		fmt.Sprintf("/app/ssl/v1/account/%v/certificate/", c.Auth.Id),
+		fmt.Sprintf(c.endpoints["certList"], account),
 		url.Values{})
 	if err != nil {
 		log.Panicln("failed to get certificates list:", err)

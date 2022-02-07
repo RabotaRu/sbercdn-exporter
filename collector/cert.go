@@ -2,6 +2,7 @@ package collector
 
 import (
 	"log"
+	"sync"
 
 	"git.rabota.space/infrastructure/sbercdn-exporter/apiclient"
 	"github.com/prometheus/client_golang/prometheus"
@@ -19,12 +20,12 @@ func NewSberCdnCertCollector(client *apiclient.SberCdnApiClient) *SberCdnCertCol
 			"cert_start": prometheus.NewDesc(
 				"sbercdn_certificate_valid_since",
 				"UNIX time in seconds since EPOCH since which certificate is valid",
-				[]string{"cn"},
+				[]string{"account", "cn"},
 				nil),
 			"cert_end": prometheus.NewDesc(
 				"sbercdn_certificate_valid_till",
 				"UNIX time in seconds since EPOCH till which certificate is valid",
-				[]string{"cn"},
+				[]string{"account", "cn"},
 				nil),
 		},
 	}
@@ -37,16 +38,25 @@ func (c *SberCdnCertCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *SberCdnCertCollector) Collect(mch chan<- prometheus.Metric) {
-	cl, err := c.client.GetCertList()
-	if err != nil {
-		log.Panicln(err)
+	var wag sync.WaitGroup
+	getCertMetrics := func(acc string) {
+		defer wag.Done()
+		cl, err := c.client.GetCertList(acc)
+		if err != nil {
+			log.Panicln(err)
+		}
+		certs := cl.Data
+		for i := 0; i < len(certs); i++ {
+			ci := &certs[i]
+			mch <- prometheus.MustNewConstMetric(c.descriptions["cert_start"], prometheus.CounterValue,
+				ci.Start, acc, ci.Cn)
+			mch <- prometheus.MustNewConstMetric(c.descriptions["cert_end"], prometheus.CounterValue,
+				ci.End, acc, ci.Cn)
+		}
 	}
-	certs := cl.Data
-	for i := 0; i < len(certs); i++ {
-		ci := &certs[i]
-		mch <- prometheus.MustNewConstMetric(c.descriptions["cert_start"], prometheus.CounterValue,
-			ci.Start, ci.Cn)
-		mch <- prometheus.MustNewConstMetric(c.descriptions["cert_end"], prometheus.CounterValue,
-			ci.End, ci.Cn)
+	for _, acc := range c.client.FindActiveAccounts() {
+		wag.Add(1)
+		getCertMetrics(acc)
 	}
+	wag.Wait()
 }

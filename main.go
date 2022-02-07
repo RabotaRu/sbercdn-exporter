@@ -23,13 +23,12 @@ var (
 	Version = "dev"
 	config  = cmn.AppConf{
 		Client: cmn.ClientConf{
-			Url: "https://api.cdn.sber.cloud",
-			Auth: cmn.Auth{
-				Urn:           "/app/oauth/v1/token/",
-				TokenLifetime: 6 * time.Hour,
-			},
-			MaxQueryTime:   10 * time.Second,
-			ScrapeInterval: time.Minute,
+			Url:              "https://api.cdn.sber.cloud",
+			AuthUrn:          "/app/oauth/v1/token/",
+			TokenLifetime:    6 * time.Hour,
+			MaxQueryTime:     10 * time.Second,
+			ScrapeInterval:   time.Minute,
+			ScrapeTimeOffset: 5 * time.Minute,
 		},
 		Listen: cmn.ListenConf{Address: ":9921"},
 	}

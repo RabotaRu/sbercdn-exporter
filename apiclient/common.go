@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -20,10 +21,12 @@ const (
 
 type SberCdnApiClient struct {
 	*cmn.ClientConf
-	hc              *http.Client
-	auth_token_time time.Time
-	endpoints       map[string]string
-	auth_token      string
+	hc               *http.Client
+	auth_token_time  time.Time
+	accs_update_time *time.Time
+	endpoints        map[string]string
+	auth_token       string
+	active_accs      []string
 }
 
 func NewSberCdnApiClient(options *cmn.ClientConf) (client *SberCdnApiClient, err error) {
@@ -31,37 +34,53 @@ func NewSberCdnApiClient(options *cmn.ClientConf) (client *SberCdnApiClient, err
 		hc:         &http.Client{},
 		ClientConf: options,
 	}
+	sort.Strings(client.Accounts)
 	_, err = client.auth()
 	if err != nil {
 		return nil, fmt.Errorf("initial authorization failed %w", err)
 	}
-	err = client.getAccountId()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get account id: %w", err)
-	}
+	client.FindActiveAccounts()
+	// if err != nil {
+	//	 return nil, fmt.Errorf("failed to get any active account: %w", err)
+	// }
 	client.endpoints = map[string]string{
-		"certList":  fmt.Sprintf("/app/ssl/v1/account/%v/certificate/", client.Auth.Id),
-		"statistic": "/app/statistic/v3/",
+		"certList":     "/app/ssl/v1/account/%v/certificate/",
+		"statistic":    "/app/statistic/v3/",
+		"realtimestat": "/app/realtimestat/v1/",
 	}
 	return client, err
 }
 
-func (c *SberCdnApiClient) getAccountId() (err error) {
+func (c *SberCdnApiClient) FindActiveAccounts() (accounts []string) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println(r)
+		}
+	}()
 	body, err := c.Get("/app/inventory/v1/accounts/", url.Values{})
 	if err != nil {
-		return fmt.Errorf("failed to GET account_id")
+		log.Panicln("failed to GET account_id")
 	}
 	var accs []map[string]string
 	err = json.Unmarshal(body, &accs)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal accounts %w, \n\t%v", err, string(body))
+		log.Panicln("failed to unmarshal accounts %w", err)
 	}
 	if len(accs) == 0 {
-		return fmt.Errorf("failed to find account_id, empty accounts list")
+		log.Panicln("failed to find account_id, empty accounts list")
 	}
-	c.Auth.Id = strings.Split(accs[0]["uid"], "-")[2]
-	log.Printf("using account: \"%v\"", c.Auth.Id)
-	return
+	if c.accs_update_time == nil || time.Since(*c.accs_update_time) >= c.ScrapeTimeOffset {
+		var active_accs []string
+		for i := range accs {
+			if accs[i]["status"] == "active" && (len(c.Accounts) == 0 || sort.SearchStrings(c.Accounts, accs[i]["name"]) < len(c.Accounts)) {
+				active_accs = append(active_accs, accs[i]["name"])
+			}
+		}
+		c.active_accs = active_accs
+		t := time.Now()
+		c.accs_update_time = &t
+	}
+	return c.active_accs
 }
 
 func (c *SberCdnApiClient) auth() (auth_token string, err error) {
@@ -71,17 +90,17 @@ func (c *SberCdnApiClient) auth() (auth_token string, err error) {
 			auth_token = ""
 		}
 	}()
-	if c.auth_token != "" && time.Since(c.auth_token_time) < (c.Auth.TokenLifetime-c.MaxQueryTime) {
+	if c.auth_token != "" && time.Since(c.auth_token_time) < (c.TokenLifetime-c.MaxQueryTime) {
 		return c.auth_token, err
 	}
 	req, err := http.NewRequestWithContext(
 		context.Background(),
 		"POST",
-		c.Url+c.Auth.Urn,
+		c.Url+c.AuthUrn,
 		strings.NewReader(
 			url.Values{
-				"username": {c.Auth.Username},
-				"password": {c.Auth.Password},
+				"username": {c.Username},
+				"password": {c.Password},
 			}.Encode(),
 		),
 	)
@@ -149,16 +168,16 @@ func (c *SberCdnApiClient) Get(urn string, query url.Values) (body []byte, err e
 	return body, err
 }
 
-func (c *SberCdnApiClient) GetStatistic(endtime time.Time, endpoint string) (ms map[string]interface{}) {
+func (c *SberCdnApiClient) GetStatistic(endtime time.Time, endpoint, account string) (ms map[string]interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			ms = nil
 		}
 	}()
 	v := url.Values{}
-	v.Set("account", c.Auth.Id)
-	v.Set("end", endtime.Truncate(time.Minute).Format(TimeRangeFormat))
-	v.Set("start", endtime.Add(c.ScrapeInterval*-1).Truncate(time.Minute).Format(TimeRangeFormat))
+	v.Set("account", account)
+	v.Set("end", endtime.Format(TimeRangeFormat))
+	v.Set("start", endtime.Add(c.ScrapeInterval*-1).Format(TimeRangeFormat))
 
 	body, err := c.Get(c.endpoints["statistic"]+endpoint, v)
 	if err != nil {
