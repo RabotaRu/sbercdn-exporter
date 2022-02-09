@@ -44,11 +44,12 @@ func NewSberCdnApiClient(options *cmn.ClientConf) (client *SberCdnApiClient, err
 		ClientConf: options,
 	}
 	sort.Strings(client.Accounts)
-	_, err = client.auth()
+	ctx := context.Background()
+	_, err = client.auth(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("initial authorization failed %w", err)
 	}
-	client.FindActiveAccounts()
+	client.FindActiveAccounts(ctx)
 	// if err != nil {
 	//	 return nil, fmt.Errorf("failed to get any active account: %w", err)
 	// }
@@ -60,13 +61,13 @@ func NewSberCdnApiClient(options *cmn.ClientConf) (client *SberCdnApiClient, err
 	return client, err
 }
 
-func (c *SberCdnApiClient) FindActiveAccounts() (accounts []string) {
+func (c *SberCdnApiClient) FindActiveAccounts(ctx context.Context) (accounts []string) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(r)
 		}
 	}()
-	body, err := c.Get("/app/inventory/v1/accounts/", url.Values{})
+	body, err := c.Get("/app/inventory/v1/accounts/", url.Values{}, ctx)
 	if err != nil {
 		log.Panicln("failed to GET account_id")
 	}
@@ -92,7 +93,7 @@ func (c *SberCdnApiClient) FindActiveAccounts() (accounts []string) {
 	return c.active_accs
 }
 
-func (c *SberCdnApiClient) auth() (auth_token string, err error) {
+func (c *SberCdnApiClient) auth(ctx context.Context) (auth_token string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("failed to update auth token:", r)
@@ -103,7 +104,7 @@ func (c *SberCdnApiClient) auth() (auth_token string, err error) {
 		return c.auth_token, err
 	}
 	req, err := http.NewRequestWithContext(
-		context.Background(),
+		ctx,
 		"POST",
 		c.Url+c.AuthUrn,
 		strings.NewReader(
@@ -146,21 +147,21 @@ func (c *SberCdnApiClient) auth() (auth_token string, err error) {
 	return c.auth_token, err
 }
 
-func (c *SberCdnApiClient) Get(urn string, query url.Values) (body []byte, err error) {
+func (c *SberCdnApiClient) Get(urn string, query url.Values, ctx context.Context) (body []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			body = nil
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), c.ScrapeInterval)
-	defer cancel()
+	// ctx, cancel := context.WithTimeout(ctx, c.ScrapeInterval)
+	// defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "GET", c.Url+urn, http.NoBody)
 	if err != nil {
 		log.Panicf("failed to prepare request for cert list: %v\n", err)
 	}
 	req.URL.RawQuery = query.Encode()
-	auth_token, err := c.auth()
+	auth_token, err := c.auth(ctx)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -177,24 +178,43 @@ func (c *SberCdnApiClient) Get(urn string, query url.Values) (body []byte, err e
 	return body, err
 }
 
-func (c *SberCdnApiClient) GetStatistic(api_group, endpoint, account string, endtime time.Time) (ms map[string]interface{}) {
+// func (c *SberCdnApiClient) GetStatistic(api_group, endpoint, account string, endtime time.Time) (ms map[string]interface{}) {
+func (c *SberCdnApiClient) GetStatistic(ctx context.Context) (ms map[string]interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			ms = nil
 		}
 	}()
-	v := url.Values{}
-	v.Set("account", account)
-	v.Set("end", endtime.Format(TimeRangeFormat))
-	v.Set("start", endtime.Add(c.ScrapeInterval*-1).Format(TimeRangeFormat))
-
-	body, err := c.Get(c.endpoints[api_group]+endpoint, v)
+	var uri string
+	values := url.Values{}
+	if account, ok := ctx.Value(cmn.CtxKey("account")).(string); ok {
+		values.Set("account", account)
+	} else {
+		log.Panicln("no account in context")
+	}
+	if end, ok := ctx.Value(cmn.CtxKey("end")).(time.Time); ok {
+		values.Set("end", end.Format(TimeRangeFormat))
+		values.Set("start", end.Add(c.ScrapeInterval*-1).Format(TimeRangeFormat))
+	} else {
+		log.Panicln("no request time in context")
+	}
+	if api_group, ok := ctx.Value(cmn.CtxKey("api_group")).(string); ok {
+		uri = c.endpoints[api_group]
+	} else {
+		log.Println("no api_group in context")
+	}
+	if endpoint, ok := ctx.Value(cmn.CtxKey("endpoint")).(string); ok {
+		uri += endpoint
+	} else {
+		log.Panicln("no api endpoint in context")
+	}
+	body, err := c.Get(uri, values, ctx)
 	if err != nil {
 		log.Panicln("failed to query summary stats")
 	}
 	err = json.Unmarshal(body, &ms)
 	if err != nil {
-		log.Panicf("failed to unmarshal %v stats: %v", endpoint, err)
+		log.Panicf("failed to unmarshal %v: %v", uri, err)
 	}
 	return ms
 }

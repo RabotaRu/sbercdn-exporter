@@ -1,11 +1,14 @@
 package collector
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
 	"git.rabota.space/infrastructure/sbercdn-exporter/apiclient"
+	cmn "git.rabota.space/infrastructure/sbercdn-exporter/common"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -67,19 +70,35 @@ func (c *SberCdnStatsCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *SberCdnStatsCollector) Collect(mch chan<- prometheus.Metric) {
-	endtime := time.Now().UTC().Truncate(time.Minute).Add(c.client.ScrapeTimeOffset * -1)
 	var wag sync.WaitGroup
+	ctx_root, ctx_cancel := context.WithTimeout(context.Background(), c.client.MaxQueryTime)
+	defer ctx_cancel()
+	ctx_root = context.WithValue(
+		ctx_root,
+		cmn.CtxKey("end"),
+		time.Now().UTC().Truncate(time.Minute).Add(c.client.ScrapeTimeOffset*-1))
 
-	sendMetrics := func(acc, group_name string) {
+	sendMetrics := func(ctx context.Context) {
 		defer wag.Done()
-		var endpoint, group string
+		var ok bool
+		var acc, endpoint, group, group_name string
+		var endtime time.Time
+		var results []interface{}
+		if acc, ok = ctx.Value(cmn.CtxKey("account")).(string); !ok {
+			log.Println("Oops, acc is not a string!")
+		}
+		if endtime, ok = ctx.Value(cmn.CtxKey("end")).(time.Time); !ok {
+			log.Println("Oops endtime is not of type time.Time!")
+		}
+		if group_name, ok = ctx.Value(cmn.CtxKey("metric_group_name")).(string); !ok {
+			log.Println("Oops group_name is not a string!")
+		}
 		if group_name != SUMMARY {
 			group = group_name
 			endpoint = group + "s"
 		}
-		var ok bool
-		var results []interface{}
-		mtrc := c.client.GetStatistic(c.api_group, endpoint, acc, endtime)
+		ctx = context.WithValue(context.WithValue(ctx, cmn.CtxKey("endpoint"), endpoint), cmn.CtxKey("api_group"), c.api_group)
+		mtrc := c.client.GetStatistic(ctx) // c.api_group, endpoint, acc, endtime)
 		if results, ok = mtrc["result"].([]interface{}); !ok {
 			if group_name == SUMMARY {
 				for metric_name, value := range mtrc {
@@ -122,10 +141,12 @@ func (c *SberCdnStatsCollector) Collect(mch chan<- prometheus.Metric) {
 		}
 	}
 
-	for _, acc := range c.client.FindActiveAccounts() {
+	for _, acc := range c.client.FindActiveAccounts(ctx_root) {
+		ctx := context.WithValue(ctx_root, cmn.CtxKey("account"), acc)
 		for _, metric_group_name := range c.metric_groups {
 			wag.Add(1)
-			go sendMetrics(acc, metric_group_name)
+			ctx := context.WithValue(ctx, cmn.CtxKey("metric_group_name"), metric_group_name)
+			go sendMetrics(ctx)
 		}
 	}
 	wag.Wait()

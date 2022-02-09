@@ -11,6 +11,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type CtxKey string
+
 type ClientConf struct {
 	Url              string        `yaml:"url"`
 	AuthUrn          string        `yaml:"auth_urn"`
