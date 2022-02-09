@@ -67,26 +67,37 @@ func ReadConfigFromEnv(prefix, tag string, c interface{}) {
 			prefix+" "+ft.Tag.Get(tag)),
 			" \t\n"),
 			" ", "_")
+		if fval.Kind() == reflect.Struct {
+			ReadConfigFromEnv(var_name, tag, fval.Addr().Interface())
+		}
+		var var_val string
+		var ok bool
+		if var_val, ok = os.LookupEnv(var_name); !ok {
+			continue
+		}
 		switch fval.Kind() { //nolint: exhaustive
 		case reflect.String:
-			if v, ok := os.LookupEnv(var_name); ok {
-				fval.SetString(v)
-			}
+			fval.SetString(var_val)
 		case reflect.Int64:
 			// TODO: write more safe value parsing
-			if v, ok := os.LookupEnv(var_name); ok {
-				if v, err := time.ParseDuration(v); err != nil {
-					log.Println("Found env var", var_name, "with value", v)
-				} else {
-					fval.SetInt(v.Nanoseconds())
+			if d, err := time.ParseDuration(var_val); err != nil {
+				log.Panicf("Failed to parse duration from env var %v with value %v: %v\n",
+					var_name, var_val, err)
+			} else {
+				fval.SetInt(d.Nanoseconds())
+			}
+		case reflect.Slice:
+			tmpslice := strings.Split(var_val, ",")
+			var slice []string
+			for i := range tmpslice {
+				v := strings.TrimSpace(tmpslice[i])
+				if v != "" {
+					slice = append(slice, v)
 				}
 			}
-		case reflect.Struct:
-			ReadConfigFromEnv(var_name, tag, fval.Addr().Interface())
+			fval.Set(reflect.ValueOf(slice))
 		default:
-			if v, ok := os.LookupEnv(var_name); ok {
-				log.Println("Found not catched env var", var_name, "with value", v, "and type", fval.Kind())
-			}
+			log.Println("Found not catched env var", var_name, "with value", var_val, "and type", fval.Kind())
 		}
 	}
 }

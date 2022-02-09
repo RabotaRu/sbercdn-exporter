@@ -19,6 +19,15 @@ const (
 	TimeRangeFormat = "2006-01-02T15:04:05"
 )
 
+func InArray(a []string, e string) bool {
+	for _, x := range a {
+		if x == e {
+			return true
+		}
+	}
+	return false
+}
+
 type SberCdnApiClient struct {
 	*cmn.ClientConf
 	hc               *http.Client
@@ -72,7 +81,7 @@ func (c *SberCdnApiClient) FindActiveAccounts() (accounts []string) {
 	if c.accs_update_time == nil || time.Since(*c.accs_update_time) >= c.ScrapeTimeOffset {
 		var active_accs []string
 		for i := range accs {
-			if accs[i]["status"] == "active" && (len(c.Accounts) == 0 || sort.SearchStrings(c.Accounts, accs[i]["name"]) < len(c.Accounts)) {
+			if accs[i]["status"] == "active" && (len(c.Accounts) == 0 || InArray(c.Accounts, accs[i]["name"])) {
 				active_accs = append(active_accs, accs[i]["name"])
 			}
 		}
@@ -168,7 +177,7 @@ func (c *SberCdnApiClient) Get(urn string, query url.Values) (body []byte, err e
 	return body, err
 }
 
-func (c *SberCdnApiClient) GetStatistic(endtime time.Time, endpoint, account string) (ms map[string]interface{}) {
+func (c *SberCdnApiClient) GetStatistic(api_group, endpoint, account string, endtime time.Time) (ms map[string]interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			ms = nil
@@ -179,7 +188,7 @@ func (c *SberCdnApiClient) GetStatistic(endtime time.Time, endpoint, account str
 	v.Set("end", endtime.Format(TimeRangeFormat))
 	v.Set("start", endtime.Add(c.ScrapeInterval*-1).Format(TimeRangeFormat))
 
-	body, err := c.Get(c.endpoints["statistic"]+endpoint, v)
+	body, err := c.Get(c.endpoints[api_group]+endpoint, v)
 	if err != nil {
 		log.Panicln("failed to query summary stats")
 	}
