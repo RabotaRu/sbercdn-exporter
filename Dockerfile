@@ -10,7 +10,7 @@ ENV CGO_ENABLED=0
 WORKDIR sbercdn-exporter
 
 # Copy src code from the host and compile it
-COPY api_client ./api_client
+COPY apiclient ./apiclient
 COPY common ./common
 COPY collector ./collector
 COPY go.* *.go ./
