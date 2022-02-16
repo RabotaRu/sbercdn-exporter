@@ -1,10 +1,13 @@
-package api_client
+package apiclient
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
+
+	cmn "git.rabota.space/infrastructure/sbercdn-exporter/common"
 )
 
 type CertItem struct {
@@ -22,16 +25,21 @@ type CertList struct {
 	Status  int        `json:"status"`
 }
 
-func (c *SberCdnApiClient) GetCertList() (certlist CertList, err error) {
+func (c *SberCdnApiClient) GetCertList(ctx context.Context) (certlist CertList, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("failed to get certificates list:", r)
 		}
 	}()
-
+	var ok bool
+	var account string
+	if account, ok = ctx.Value(cmn.CtxKey("account")).(string); !ok {
+		log.Panicln("no account value in context")
+	}
 	body, err := c.Get(
-		fmt.Sprintf("/app/ssl/v1/account/%v/certificate/", c.Auth.Id),
-		url.Values{})
+		fmt.Sprintf(c.endpoints["certList"], account),
+		url.Values{},
+		ctx)
 	if err != nil {
 		log.Panicln("failed to get certificates list:", err)
 	}

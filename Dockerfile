@@ -1,5 +1,5 @@
 ARG GOLANG_VERSION=1.17
-ARG VERSION=0.1.0
+ARG VERSION=0.3.0
 
 FROM golang:${GOLANG_VERSION} AS builder
 ARG VERSION
@@ -10,7 +10,7 @@ ENV CGO_ENABLED=0
 WORKDIR sbercdn-exporter
 
 # Copy src code from the host and compile it
-COPY api_client ./api_client
+COPY apiclient ./apiclient
 COPY common ./common
 COPY collector ./collector
 COPY go.* *.go ./
