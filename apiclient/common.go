@@ -50,9 +50,6 @@ func NewSberCdnApiClient(options *cmn.ClientConf) (client *SberCdnApiClient, err
 		return nil, fmt.Errorf("initial authorization failed %w", err)
 	}
 	client.FindActiveAccounts(ctx)
-	// if err != nil {
-	//	 return nil, fmt.Errorf("failed to get any active account: %w", err)
-	// }
 	client.endpoints = map[string]string{
 		"certList":     "/app/ssl/v1/account/%v/certificate/",
 		"statistic":    "/app/statistic/v3/",
