@@ -1,0 +1,89 @@
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    ldflags:
+      - -s -w -X main.Version={{.Version}}
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+release:
+  name_template: "v{{.Version}}"
+  #  draft: true
+  prerelease: auto
+
+changelog:
+  skip: false
+  use: github
+  sort: asc
+
+  groups:
+    - title: "Linter"
+      regexp: "^.*linter.*$"
+      order: 0
+    - title: "Tests"
+      regexp: "^.*tests?.*$"
+      order: 1
+    - title: "Documentation"
+      regexp: "^.*(documentation|docs?).*$"
+      order: 2
+    - title: "Other"
+      order: 999
+
+  filters:
+    exclude:
+      - "^WIP:"
+      - Merge pull request
+      - Merge branch
+      - go mod tidy
+      - typo
+
+dockers:
+  - dockerfile: Dockerfile
+    image_templates:
+      - "ghcr.io/rabotaru/sbercdn-exporter:{{ .Version }}"
+      - "ghcr.io/rabotaru/sbercdn-exporter:latest"
+
+      - "rabotaru/sbercdn-exporter:{{ .Version }}"
+      - "rabotaru/sbercdn-exporter:latest"
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.licenses=MIT"
+      - "--label=org.opencontainers.image.source=https://github.com/rabotaru/sbercdn-exporter"
+      - "--label=org.opencontainers.image.url=https://github.com/rabotaru/sbercdn-exporter/pkgs/container/sbercdn-exporter"
+
+      - "--platform=linux/amd64"
+    goos: linux
+    goarch: amd64
+    use: buildx
+
+brews:
+  - tap:
+      owner: rabotaru
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    description: "Sbercdn-exporter is a prometheus metrics exporter for SberCloud CDN https://cdn.sber.cloud"
+    license: "MIT"
+    folder: formula
+    skip_upload: auto
+
+milestones:
+  - repo:
+      owner: rabotaru
+      name: sbercdn-exporter
+    close: true
+    fail_on_error: false
+    name_template: "{{.Tag}}"
