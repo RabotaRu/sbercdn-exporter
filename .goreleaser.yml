@@ -70,16 +70,6 @@ dockers:
     goarch: amd64
     use: buildx
 
-brews:
-  - tap:
-      owner: rabotaru
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    description: "Sbercdn-exporter is a prometheus metrics exporter for SberCloud CDN https://cdn.sber.cloud"
-    license: "MIT"
-    folder: formula
-    skip_upload: auto
-
 milestones:
   - repo:
       owner: rabotaru
