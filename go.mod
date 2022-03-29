@@ -1,4 +1,4 @@
-module git.rabota.space/infrastructure/sbercdn-exporter
+module github.com/RabotaRu/sbercdn-exporter
 
 go 1.16
 

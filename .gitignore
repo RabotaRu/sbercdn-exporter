@@ -1,8 +1,10 @@
 .idea/
 *.geany
 *~
+.project*
 
 .go-build/
+dist/
 main
 sbercdn-exporter
 

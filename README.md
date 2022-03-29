@@ -9,9 +9,10 @@ At this moment service may be configured from config and/or from env.
 There is only one cli flag now `-config` to get settings from YAML formatted config file for eg.:
 ```
 listen:
-  address: ":9921" # mandatory, address to listen on
+  address: ":9921" # optional, address to listen on defaults to :9921
   cert_file:       # optional, path certificate file for endpoint encryption
   privkey_file:    # optional, path to unencrypted private key file for endpoint encryption
+                   # if both cert_file and privkey_file are not empty exporter will serve metrics through HTTPS
 
 api:
   url: "https://api.cdn.sber.cloud" # optional, API URL, defaults to https://api.cdn.sber.cloud
@@ -29,6 +30,12 @@ yaml params full path in upper case with "SCE" prefix joined with "_" for eg. op
 ```
 SCE_LISTEN_ADDRESS=":9921"
 SCE_API_URL="https://api.cdn.sber.cloud"
-SCE_API_AUTH_USERNAME="username@example.com"
-SCE_API_AUTH_PASSWORD="password"
+SCE_API_USERNAME="username@example.com"
+SCE_API_PASSWORD="password"
+```
+
+## Running in docker container
+
+```
+docker run --rm -e SCE_API_USERNAME="username@example.com" -e SCE_API_PASSWORD="password" -p 9921:9921/tcp ghcr.io/rabotaru/sbercdn-exporter:latest
 ```

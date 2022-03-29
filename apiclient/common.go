@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	cmn "git.rabota.space/infrastructure/sbercdn-exporter/common"
+	cmn "github.com/RabotaRu/sbercdn-exporter/common"
 )
 
 const (
@@ -83,9 +83,12 @@ func (c *SberCdnApiClient) FindActiveAccounts(ctx context.Context) (accounts []s
 				active_accs = append(active_accs, accs[i]["name"])
 			}
 		}
-		c.active_accs = active_accs
-		t := time.Now()
-		c.accs_update_time = &t
+		if fmt.Sprintf("%v", c.active_accs) != fmt.Sprintf("%v", active_accs) {
+			log.Println("active accounts now:", active_accs)
+			c.active_accs = active_accs
+			t := time.Now()
+			c.accs_update_time = &t
+		}
 	}
 	return c.active_accs
 }
@@ -93,8 +96,8 @@ func (c *SberCdnApiClient) FindActiveAccounts(ctx context.Context) (accounts []s
 func (c *SberCdnApiClient) auth(ctx context.Context) (auth_token string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("failed to update auth token:", r)
 			auth_token = ""
+			log.Println("failed to update auth token:", r)
 		}
 	}()
 	if c.auth_token != "" && time.Since(c.auth_token_time) < (c.TokenLifetime-c.MaxQueryTime) {
@@ -112,19 +115,24 @@ func (c *SberCdnApiClient) auth(ctx context.Context) (auth_token string, err err
 		),
 	)
 	if err != nil {
-		log.Panicln("Error creating new auth request")
+		err = fmt.Errorf("Error creating new auth request")
+		log.Panicln(err)
 	}
 	resp, err := c.hc.Do(req)
 	if err != nil {
-		log.Panicln("Error sending auth request")
+		err = fmt.Errorf("Error sending auth request")
+		log.Panicln(err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		log.Panicln(fmt.Errorf("auth response status code %v", resp.Status))
-	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Panicln("Error reading auth response body")
+	}
+	if resp.StatusCode != 200 {
+		reqbody, _ := io.ReadAll(req.Body)
+		err = fmt.Errorf("auth response status code %v", resp.Status)
+		log.Println(string(reqbody))
+		log.Panicln(err)
 	}
 
 	var data map[string]interface{}
@@ -136,7 +144,7 @@ func (c *SberCdnApiClient) auth(ctx context.Context) (auth_token string, err err
 	if auth_token, ok := data["token"].(string); ok {
 		c.auth_token = auth_token
 		c.auth_token_time = time.Now()
-		log.Println("Authorized successfully!")
+		log.Println("Authorized successfully on", c.Url)
 	} else {
 		err := fmt.Errorf("token is not a string")
 		log.Panicln("%w", err)
