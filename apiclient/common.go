@@ -115,30 +115,28 @@ func (c *SberCdnApiClient) auth(ctx context.Context) (auth_token string, err err
 		),
 	)
 	if err != nil {
-		err = fmt.Errorf("Error creating new auth request")
+		err = fmt.Errorf("error creating new auth request")
 		log.Panicln(err)
 	}
 	resp, err := c.hc.Do(req)
 	if err != nil {
-		err = fmt.Errorf("Error sending auth request")
+		err = fmt.Errorf("error sending auth request")
 		log.Panicln(err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		err = fmt.Errorf("auth response status code %v", resp.Status)
+		log.Panicln(err)
+	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Panicln("Error reading auth response body")
-	}
-	if resp.StatusCode != 200 {
-		reqbody, _ := io.ReadAll(req.Body)
-		err = fmt.Errorf("auth response status code %v", resp.Status)
-		log.Println(string(reqbody))
-		log.Panicln(err)
+		log.Panicln("error reading auth response body")
 	}
 
 	var data map[string]interface{}
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		log.Panicln("Error unmarshaling auth response json body")
+		log.Panicln("error unmarshaling auth response json body")
 	}
 
 	if auth_token, ok := data["token"].(string); ok {
@@ -146,7 +144,7 @@ func (c *SberCdnApiClient) auth(ctx context.Context) (auth_token string, err err
 		c.auth_token_time = time.Now()
 		log.Println("Authorized successfully on", c.Url)
 	} else {
-		err := fmt.Errorf("token is not a string")
+		err := fmt.Errorf("error: token is not a string or there's no token in response")
 		log.Panicln("%w", err)
 	}
 	return c.auth_token, err
@@ -159,8 +157,6 @@ func (c *SberCdnApiClient) Get(urn string, query url.Values, ctx context.Context
 		}
 	}()
 
-	// ctx, cancel := context.WithTimeout(ctx, c.ScrapeInterval)
-	// defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "GET", c.Url+urn, http.NoBody)
 	if err != nil {
 		log.Panicf("failed to prepare request for cert list: %v\n", err)
@@ -183,7 +179,6 @@ func (c *SberCdnApiClient) Get(urn string, query url.Values, ctx context.Context
 	return body, err
 }
 
-// func (c *SberCdnApiClient) GetStatistic(api_group, endpoint, account string, endtime time.Time) (ms map[string]interface{}) {
 func (c *SberCdnApiClient) GetStatistic(ctx context.Context) (ms map[string]interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
