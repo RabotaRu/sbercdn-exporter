@@ -53,7 +53,7 @@ func main() {
 		config.Listen.Address = "0.0.0.0" + config.Listen.Address
 	}
 
-	if config.Client.Username == "" || config.Client.Username == "" {
+	if config.Client.Username == "" || config.Client.Password == "" {
 		log.Fatalln("API username or password is missing or empty")
 	}
 

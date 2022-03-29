@@ -65,11 +65,16 @@ func (c *SberCdnCertCollector) Collect(mch chan<- prometheus.Metric) {
 		}
 		certs := cl.Data
 		for i := 0; i < len(certs); i++ {
-			ci := &certs[i]
-			mch <- prometheus.MustNewConstMetric(c.descriptions["cert_start"], prometheus.CounterValue,
-				ci.Start, account, ci.Comment, ci.Cn)
-			mch <- prometheus.MustNewConstMetric(c.descriptions["cert_end"], prometheus.CounterValue,
-				ci.End, account, ci.Comment, ci.Cn)
+			cert := &certs[i]
+			mch <- prometheus.MustNewConstMetric(c.descriptions["cert_start"],
+				prometheus.CounterValue,
+				cert.Start,
+				account, cert.Comment, cert.Cn)
+			mch <- prometheus.MustNewConstMetric(
+				c.descriptions["cert_end"],
+				prometheus.CounterValue,
+				cert.End,
+				account, cert.Comment, cert.Cn)
 		}
 	}
 

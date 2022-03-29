@@ -48,7 +48,7 @@ changelog:
       - typo
 
 dockers:
-  - dockerfile: GoReleaserDockerfile
+  - dockerfile: GoReleaser.Dockerfile
     image_templates:
       - "ghcr.io/rabotaru/sbercdn-exporter:{{ .Version }}"
       - "ghcr.io/rabotaru/sbercdn-exporter:latest"
