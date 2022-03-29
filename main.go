@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"git.rabota.space/infrastructure/sbercdn-exporter/apiclient"
-	col "git.rabota.space/infrastructure/sbercdn-exporter/collector"
-	cmn "git.rabota.space/infrastructure/sbercdn-exporter/common"
+	"github.com/RabotaRu/sbercdn-exporter/apiclient"
+	col "github.com/RabotaRu/sbercdn-exporter/collector"
+	cmn "github.com/RabotaRu/sbercdn-exporter/common"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -51,6 +51,10 @@ func main() {
 	cmn.ReadConfigFromEnv("SCE", "yaml", &config)
 	if strings.HasPrefix(config.Listen.Address, ":") {
 		config.Listen.Address = "0.0.0.0" + config.Listen.Address
+	}
+
+	if config.Client.Username == "" || config.Client.Username == "" {
+		log.Fatalln("API username or password is missing or empty")
 	}
 
 	apiClient, err := apiclient.NewSberCdnApiClient(&config.Client)

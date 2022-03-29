@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/url"
 
-	cmn "git.rabota.space/infrastructure/sbercdn-exporter/common"
+	cmn "github.com/RabotaRu/sbercdn-exporter/common"
 )
 
 type CertItem struct {

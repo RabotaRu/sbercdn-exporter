@@ -48,13 +48,10 @@ changelog:
       - typo
 
 dockers:
-  - dockerfile: Dockerfile
+  - dockerfile: GoReleaserDockerfile
     image_templates:
       - "ghcr.io/rabotaru/sbercdn-exporter:{{ .Version }}"
       - "ghcr.io/rabotaru/sbercdn-exporter:latest"
-
-      - "rabotaru/sbercdn-exporter:{{ .Version }}"
-      - "rabotaru/sbercdn-exporter:latest"
     build_flag_templates:
       - "--pull"
       - "--label=org.opencontainers.image.created={{.Date}}"

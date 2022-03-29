@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"git.rabota.space/infrastructure/sbercdn-exporter/apiclient"
-	cmn "git.rabota.space/infrastructure/sbercdn-exporter/common"
+	"github.com/RabotaRu/sbercdn-exporter/apiclient"
+	cmn "github.com/RabotaRu/sbercdn-exporter/common"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
